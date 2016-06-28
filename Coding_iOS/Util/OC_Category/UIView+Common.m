@@ -578,6 +578,11 @@ static char LoadingViewKey, BlankPageViewKey;
         NSString *imageName, *tipStr;
         _curType=blankPageType;
         switch (blankPageType) {
+            case EaseBlankPageTypeTaskResource: {
+                imageName = @"blankpage_image_Sleep";
+                tipStr = @"暂时没有相关的资源";
+                break;
+            }
             case EaseBlankPageTypeActivity://项目动态
             {
                 imageName = @"blankpage_image_Sleep";
@@ -625,6 +630,11 @@ static char LoadingViewKey, BlankPageViewKey;
                 imageName = @"blankpage_image_loadFail";
                 tipStr = @"晚了一步\n文件刚刚被人删除了～";
             }
+            case EaseBlankPageTypeMRForbidden://去了MR页面，发现没有权限
+            {
+                imageName = @"blankpage_image_loadFail";
+                tipStr = @"无权访问\n请联系项目管理员进行代码权限设置";
+            }
                 break;
             case EaseBlankPageTypeFolderDleted://文件夹
             {
@@ -667,7 +677,7 @@ static char LoadingViewKey, BlankPageViewKey;
             case EaseBlankPageTypeShopOrders:
             {
                 imageName = @"blankpage_image_Sleep";
-                tipStr = @"您还木有订单呢\n努力推代码，把洋葱猴带回家～";
+                tipStr = @"您还木有订单呢\n努力做任务，把洋葱猴带回家～";
             }
                 break;
             case EaseBlankPageTypeShopSendOrders:
@@ -684,7 +694,7 @@ static char LoadingViewKey, BlankPageViewKey;
                 break;
             case EaseBlankPageTypeNoExchangeGoods:{
                 imageName = @"blankpage_image_Sleep";
-                tipStr = @"还木有可兑换的商品呢\n努力推代码，把洋葱猴带回家～";
+                tipStr = @"还木有可兑换的商品呢\n努力做任务，把洋葱猴带回家～";
             }
                 break;
             case EaseBlankPageTypeProject_ALL:{

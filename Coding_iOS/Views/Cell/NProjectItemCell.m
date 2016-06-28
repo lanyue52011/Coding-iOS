@@ -11,6 +11,7 @@
 @interface NProjectItemCell ()
 @property (strong, nonatomic) UIImageView *imgView;
 @property (strong, nonatomic) UILabel *titleLabel;
+@property (strong, nonatomic) UILabel *rightLabel;
 @end
 
 @implementation NProjectItemCell
@@ -19,7 +20,7 @@
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
         // Initialization code
-        self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+       // self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         self.backgroundColor = kColorTableBG;
         if (!_imgView) {
             _imgView = [UIImageView new];
@@ -41,6 +42,15 @@
                 make.centerY.height.equalTo(self.contentView);
             }];
         }
+        if (!_rightLabel) {
+            _rightLabel = [[UILabel alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_titleLabel.frame), 7, kScreen_Width - CGRectGetMaxX(_titleLabel.frame) - 35, 30)];
+            _rightLabel.font = [UIFont systemFontOfSize:18];
+            _rightLabel.textColor = [UIColor colorWithHexString:@"0x999999"];
+            _rightLabel.textAlignment = NSTextAlignmentRight;
+            [self.rightLabel setHidden:YES];
+            [self.contentView addSubview:_rightLabel];
+        }
+        self.clipsToBounds = YES;
     }
     return self;
 }
@@ -63,6 +73,12 @@
     [self.contentView addBadgeTip:kBadgeTipStr withCenterPosition:CGPointMake(pointX, pointY)];
 }
 
+- (void)addTipHeadIcon:(NSString *)IconString {
+    CGFloat pointX = kScreen_Width - 40;
+    CGFloat pointY = [[self class] cellHeight]/2;
+    [self.contentView addBadgeTip:IconString withCenterPosition:CGPointMake(pointX, pointY)];
+}
+
 - (void)removeTip{
     [self.contentView removeBadgeTips];
 }
@@ -70,6 +86,15 @@
 - (void)setImageStr:(NSString *)imgStr andTitle:(NSString *)title{
     self.imgView.image = [UIImage imageNamed:imgStr];
     self.titleLabel.text = title;
+}
+
+- (void)setrightText:(NSString *)rightText {
+    [self.rightLabel setHidden:NO];
+    self.rightLabel.text = rightText;
+}
+
+- (void)setNorightText {
+    [self.rightLabel setHidden:YES];
 }
 
 + (CGFloat)cellHeight{

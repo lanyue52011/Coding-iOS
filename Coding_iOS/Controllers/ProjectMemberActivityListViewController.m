@@ -12,6 +12,7 @@
 #import "TopicDetailViewController.h"
 #import "FileListViewController.h"
 #import "FileViewController.h"
+#import "MRDetailViewController.h"
 
 #import "ProjectCommitsViewController.h"
 #import "PRDetailViewController.h"
@@ -167,6 +168,11 @@
                     [NSObject showHudTipStr:@"没找到 Fork 到哪里去了~"];
                 }
             }else if ([proAct.action isEqualToString:@"push"]){
+                //    current_user_role_id = 75 是受限成员，不可访问代码
+                if (!project.is_public.boolValue && project.current_user_role_id.integerValue <= 75) {
+                    [NSObject showHudTipStr:@"无权访问项目代码相关功能"];
+                    return;
+                }
                 if (proAct.commits.count == 1) {
                     Commit *firstCommit = [proAct.commits firstObject];
                     NSString *request_path = [NSString stringWithFormat:@"%@/commit/%@", proAct.depot.path, firstCommit.sha];
@@ -186,6 +192,11 @@
         }else if ([target_type isEqualToString:@"PullRequestBean"] ||
                   [target_type isEqualToString:@"MergeRequestBean"] ||
                   [target_type isEqualToString:@"CommitLineNote"]){
+            //    current_user_role_id = 75 是受限成员，不可访问代码
+            if (!project.is_public.boolValue && project.current_user_role_id.integerValue <= 75) {
+                [NSObject showHudTipStr:@"无权访问项目代码相关功能"];
+                return;
+            }
             NSString *request_path;
             if ([target_type isEqualToString:@"PullRequestBean"]){
                 request_path = proAct.pull_request_path;
@@ -199,7 +210,13 @@
             if ([proAct.line_note.noteable_type isEqualToString:@"Commit"]) {
                 vc = [CommitFilesViewController vcWithPath:request_path];
             }else{
-                vc = [PRDetailViewController vcWithPath:request_path];
+                if([request_path rangeOfString:@"merge"].location == NSNotFound) {
+                     vc = [PRDetailViewController vcWithPath:request_path];
+                } else {
+                     vc = [MRDetailViewController vcWithPath:request_path];
+
+                }
+                
             }
             if (vc) {
                 [self.navigationController pushViewController:vc animated:YES];

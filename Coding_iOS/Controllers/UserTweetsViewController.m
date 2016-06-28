@@ -258,7 +258,7 @@
         }
         [_myMsgInputView notAndBecomeFirstResponder];
     };
-    cell.likeBtnClickedBlock = ^(Tweet *tweet){
+    cell.cellRefreshBlock = ^(){
         [weakSelf.myTableView reloadData];
     };
     cell.userBtnClickedBlock = ^(User *curUser){
@@ -288,7 +288,7 @@
     cell.goToDetailTweetBlock = ^(Tweet *curTweet){
         [self goToDetailWithTweet:curTweet];
     };
-    cell.refreshSingleCCellBlock = ^(){
+    cell.cellRefreshBlock = ^(){
         [weakSelf.myTableView reloadData];
     };
     cell.mediaItemClickedBlock = ^(HtmlMediaItem *curItem){
@@ -361,9 +361,12 @@
 
 
 - (void)sendCurComment:(Tweet *)commentObj{
+    [NSObject showHUDQueryStr:@"正在发表评论..."];
     __weak typeof(self) weakSelf = self;
     [[Coding_NetAPIManager sharedManager] request_Tweet_DoComment_WithObj:commentObj andBlock:^(id data, NSError *error) {
+        [NSObject hideHUDQuery];
         if (data) {
+            [NSObject showHudTipStr:@"评论成功"];
             Comment *resultCommnet = (Comment *)data;
             resultCommnet.owner = [Login curLoginUser];
             [commentObj addNewComment:resultCommnet];

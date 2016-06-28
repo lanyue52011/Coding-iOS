@@ -16,6 +16,8 @@
 #import "AppDelegate.h"
 #import "MBProgressHUD+Add.h"
 #import "CodingNetAPIClient.h"
+#import <SDCAlertView/SDCAlertController.h>
+#import "Coding_NetAPIManager.h"
 
 @implementation NSObject (Common)
 
@@ -288,6 +290,19 @@
     return [self deleteCacheWithPath:kPath_ResponseCache];
 }
 
++ (NSUInteger)getResponseCacheSize {
+    NSString *dirPath = [self pathInCacheDirectory:kPath_ResponseCache];
+    NSUInteger size = 0;
+    NSDirectoryEnumerator *fileEnumerator = [[NSFileManager defaultManager] enumeratorAtPath:dirPath];
+    for (NSString *fileName in fileEnumerator) {
+        NSString *filePath = [dirPath stringByAppendingPathComponent:fileName];
+        NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:filePath error:nil];
+        size += [attrs fileSize];
+    }
+    return size;
+}
+
+
 + (BOOL) deleteCacheWithPath:(NSString *)cachePath{
     NSString *dirPath = [self pathInCacheDirectory:cachePath];
     BOOL isDir = NO;
@@ -308,12 +323,11 @@
 -(id)handleResponse:(id)responseJSON autoShowError:(BOOL)autoShowError{
     NSError *error = nil;
     //code为非0值时，表示有错
-    NSNumber *resultCode = [responseJSON valueForKeyPath:@"code"];
+    NSInteger errorCode = [(NSNumber *)[responseJSON valueForKeyPath:@"code"] integerValue];
     
-    if (resultCode.intValue != 0) {
-        error = [NSError errorWithDomain:[NSObject baseURLStr] code:resultCode.intValue userInfo:responseJSON];
-
-        if (resultCode.intValue == 1000 || resultCode.intValue == 3207) {//用户未登录
+    if (errorCode != 0) {
+        error = [NSError errorWithDomain:[NSObject baseURLStr] code:errorCode userInfo:responseJSON];
+        if (errorCode == 1000 || errorCode == 3207) {//用户未登录
             if ([Login isLogin]) {
                 [Login doLogout];//已登录的状态要抹掉
                 //更新 UI 要延迟 >1.0 秒，否则屏幕可能会不响应触摸事件。。暂不知为何
@@ -323,6 +337,17 @@
                 });
             }
         }else{
+            //验证码弹窗
+            NSMutableDictionary *params = nil;
+            if (errorCode == 907) {//operation_need_captcha 比如：每日新增关注用户超过 20 个
+                params = @{@"type": @3}.mutableCopy;
+            }else if (errorCode == 1018){//user_not_get_request_too_many
+                params = @{@"type": @1}.mutableCopy;
+            }
+            if (params) {
+                [NSObject showCaptchaViewParams:params];
+            }
+            //错误提示
             if (autoShowError) {
                 [NSObject showError:error];
             }
@@ -330,4 +355,73 @@
     }
     return error;
 }
+
+
++ (void)showCaptchaViewParams:(NSMutableDictionary *)params{
+    //Data
+    if (!params) {
+        params = @{}.mutableCopy;
+    }
+    if (!params[@"type"]) {
+        params[@"type"] = @1;
+    }
+    NSString *path = @"api/request_valid";
+    NSURL *imageURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@api/getCaptcha?type=%@", [NSObject baseURLStr], params[@"type"]]];
+    //UI
+    SDCAlertController *alertV = [SDCAlertController alertControllerWithTitle:@"提示" message:@"亲，您操作这么快，不会是机器人吧？\n来，输个验证码先？" preferredStyle:SDCAlertControllerStyleAlert];
+    UITextField *textF = [UITextField new];
+    textF.layer.sublayerTransform = CATransform3DMakeTranslation(5, 0, 0);
+    textF.backgroundColor = [UIColor whiteColor];
+    [textF doBorderWidth:0.5 color:nil cornerRadius:2.0];
+    UIImageView *imageV = [UIImageView new];
+    imageV.backgroundColor = [UIColor lightGrayColor];
+    imageV.contentMode = UIViewContentModeScaleAspectFit;
+    imageV.clipsToBounds = YES;
+    imageV.userInteractionEnabled = YES;
+    [textF doBorderWidth:0.5 color:nil cornerRadius:2.0];
+    [imageV sd_setImageWithURL:imageURL placeholderImage:nil options:(SDWebImageRetryFailed | SDWebImageRefreshCached | SDWebImageHandleCookies)];
+    
+    [alertV.contentView addSubview:textF];
+    [alertV.contentView addSubview:imageV];
+    [textF mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.left.equalTo(alertV.contentView).offset(15);
+        make.height.mas_equalTo(25);
+        make.bottom.equalTo(alertV.contentView).offset(-10);
+    }];
+    [imageV mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.right.equalTo(alertV.contentView).offset(-15);
+        make.left.equalTo(textF.mas_right).offset(10);
+        make.width.mas_equalTo(60);
+        make.height.mas_equalTo(25);
+        make.centerY.equalTo(textF);
+    }];
+    //Action
+    __weak typeof(imageV) weakImageV = imageV;
+    [imageV bk_whenTapped:^{
+        [weakImageV sd_setImageWithURL:imageURL placeholderImage:nil options:(SDWebImageRetryFailed | SDWebImageRefreshCached | SDWebImageHandleCookies)];
+    }];
+    __weak typeof(alertV) weakAlertV = alertV;
+    [alertV addAction:[SDCAlertAction actionWithTitle:@"取消" style:SDCAlertActionStyleCancel handler:nil]];
+    [alertV addAction:[SDCAlertAction actionWithTitle:@"还真不是" style:SDCAlertActionStyleDefault handler:nil]];
+    alertV.shouldDismissBlock =  ^BOOL (SDCAlertAction *action){
+        BOOL shouldDismiss = [action.title isEqualToString:@"取消"];
+        if (!shouldDismiss) {
+            params[@"j_captcha"] = textF.text;
+            [[CodingNetAPIClient sharedJsonClient] requestJsonDataWithPath:path withParams:params withMethodType:Post andBlock:^(id data, NSError *error) {
+                if (data) {
+                    [weakAlertV dismissWithCompletion:^{
+                        [NSObject showHudTipStr:@"验证码正确"];
+                    }];
+                }else{
+                    [weakImageV sd_setImageWithURL:imageURL placeholderImage:nil options:(SDWebImageRetryFailed | SDWebImageRefreshCached | SDWebImageHandleCookies)];
+                }
+            }];
+        }
+        return shouldDismiss;
+    };
+    [alertV presentWithCompletion:^{
+        [textF becomeFirstResponder];
+    }];
+}
+
 @end

@@ -249,7 +249,7 @@
                     if (cell.curMember == curMember) {
                         [sender stopQueryAnimate];
                         if (data) {
-                            BOOL isAdded = [weakSelf.curTask hasWatcher:curMember.user];
+                            BOOL isAdded = [weakSelf.curTask hasWatcher:curMember.user] != nil;
                             [sender setImage:[UIImage imageNamed:isAdded? @"btn_project_added": @"btn_project_add"] forState:UIControlStateNormal];
                         }
                     }
@@ -372,6 +372,10 @@
 }
 
 - (void)editTypeOfMember:(ProjectMember *)curMember{
+    if (_myProject.is_public.boolValue) {
+        [NSObject showHudTipStr:@"公开项目不开放项目权限"];
+        return;
+    }
     __weak typeof(self) weakSelf = self;
     __weak typeof(curMember) weakMember = curMember;
     ValueListViewController *vc = [ValueListViewController new];
